@@ -18,7 +18,18 @@ class AlbumsViewModel : ViewModel() {
                 nombre = "Album",
                 cover = R.raw.cover,
                 genero = Generos.POP.nombre,
-                canciones = listOf()
+                canciones = listOf(
+                    Song(
+                        nombre = "Cancion",
+                        archivo = 0,
+                        artista = "Mario"
+                    ),
+                    Song(
+                        nombre = "Cancion",
+                        archivo = 0,
+                        artista = "Mario"
+                    )
+                )
             )
         )
         listAlbums.add(
@@ -27,7 +38,54 @@ class AlbumsViewModel : ViewModel() {
                 nombre = "Album",
                 cover = R.raw.cover,
                 genero = Generos.ROCK.nombre,
-                canciones = listOf()
+                canciones = listOf(
+                    Song(
+                        nombre = "Cancion",
+                        archivo = 0,
+                        artista = "Mario"
+                    ),
+                    Song(
+                        nombre = "Cancion",
+                        archivo = 0,
+                        artista = "Mario"
+                    )
+                    ,
+                    Song(
+                        nombre = "Cancion",
+                        archivo = 0,
+                        artista = "Mario"
+                    ),
+                    Song(
+                        nombre = "Cancion",
+                        archivo = 0,
+                        artista = "Mario"
+                    ),
+                    Song(
+                        nombre = "Cancion",
+                        archivo = 0,
+                        artista = "Mario"
+                    ),
+                    Song(
+                        nombre = "Cancion",
+                        archivo = 0,
+                        artista = "Mario"
+                    ),
+                    Song(
+                        nombre = "Cancion",
+                        archivo = 0,
+                        artista = "Mario"
+                    ),
+                    Song(
+                        nombre = "Cancion",
+                        archivo = 0,
+                        artista = "Mario"
+                    ),
+                    Song(
+                        nombre = "Cancion",
+                        archivo = 0,
+                        artista = "Mario"
+                    )
+                )
             )
         )
         listAlbums.add(
@@ -36,7 +94,18 @@ class AlbumsViewModel : ViewModel() {
                 nombre = "Album",
                 cover = R.raw.cover,
                 genero = Generos.HARD.nombre,
-                canciones = listOf()
+                canciones = listOf(
+                    Song(
+                        nombre = "Cancion",
+                        archivo = 0,
+                        artista = "Mario"
+                    ),
+                    Song(
+                        nombre = "Cancion",
+                        archivo = 0,
+                        artista = "Mario"
+                    )
+                )
             )
         )
 
