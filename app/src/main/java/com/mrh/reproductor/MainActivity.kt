@@ -24,11 +24,25 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.outlined.FastForward
+import androidx.compose.material.icons.outlined.FastRewind
+import androidx.compose.material.icons.outlined.Pause
+import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -36,13 +50,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.BlurredEdgeTreatment
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -64,7 +74,12 @@ class MainActivity : ComponentActivity() {
             val viewModel = AlbumsViewModel()
             viewModel.albums
             ReproductorTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                Scaffold(
+                    modifier = Modifier.fillMaxSize(),
+                    bottomBar = {
+                        MusicNavBar(navController)
+                    }
+                ) { innerPadding ->
                     NavigationHost(
                         navController = navController,
                         viewModel = viewModel,
@@ -75,6 +90,88 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    @SuppressLint("ResourceType")
+    @Composable
+    fun MusicNavBar(navController: NavHostController) {
+        var isPlaying by remember { mutableStateOf(false) }
+        Card {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 9.dp)
+                    .height(56.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Image(
+                        painter = painterResource(R.raw.cover),
+                        contentDescription = null,
+                        modifier = Modifier.clip(
+                            RoundedCornerShape(10.dp)
+                        )
+                    )
+                    Column() {
+                        Text("Nombre de la canción", fontWeight = FontWeight.Bold)
+                        Text("Artista")
+                    }
+                }
+                Row {
+                    IconButton(
+                        onClick = {
+
+                        }
+                    ) {
+                        Icon(imageVector = Icons.Outlined.FastRewind, contentDescription = null)
+                    }
+                    IconButton(
+                        onClick = {
+                            isPlaying = !isPlaying
+                        },
+                        colors = IconButtonDefaults.iconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.secondary,
+                            contentColor = MaterialTheme.colorScheme.onSecondary
+                        )
+                    ) {
+                        if (isPlaying) {
+                            Icon(imageVector = Icons.Outlined.Pause, contentDescription = null)
+                        } else {
+                            Icon(imageVector = Icons.Outlined.PlayArrow, contentDescription = null)
+                        }
+                    }
+                    IconButton(
+                        onClick = {
+
+                        }
+                    ) {
+                        Icon(imageVector = Icons.Outlined.FastForward, contentDescription = null)
+                    }
+                }
+            }
+            NavigationBar (
+                containerColor = Color.Transparent
+            ){
+                val lista = listOf(NavBarValues.INICIO, NavBarValues.PLAYLISTS)
+                lista.forEach { element ->
+                    NavigationBarItem(
+                        icon = {
+                            Icon(element.icon!!, contentDescription = null)
+                        },
+                        onClick = {
+                            navController.navigate(element.root)
+                        },
+                        selected = true
+                    )
+
+                }
+            }
+        }
+
+    }
+
     @Composable
     fun NavigationHost(
         navController: NavHostController,
@@ -82,84 +179,138 @@ class MainActivity : ComponentActivity() {
         modifier: Modifier = Modifier
     ) {
         NavHost(
-            startDestination = "home",
+            startDestination = NavBarValues.INICIO.root,
             navController = navController,
             modifier = modifier.fillMaxSize()
         ) {
             navigation(
-                startDestination = "albums_view",
-                route = "home"
+                startDestination = NavBarValues.INICIO.route,
+                route = NavBarValues.INICIO.root
             ) {
-                composable(route = "albums_view") {
+                composable(route = NavBarValues.INICIO.route) {
                     AlbumsView(
                         viewModel = viewModel,
                         navController = navController
                     )
                 }
-                composable(route = "album_view/{pos}") { direccion ->
+                composable(route = NavBarValues.ALBUM_VIEW.route) { direccion ->
                     val pos = direccion.arguments?.getString("pos").toString().toInt()
                     AlbumView(
-                        viewModel = viewModel,
-                        album = viewModel.getAlbums()[pos]
+                        album = viewModel.getAlbums()[pos],
+                        navController = navController
                     )
                 }
+            }
+            composable(route = NavBarValues.PLAYLISTS.root) {
+
             }
         }
     }
 
+    @OptIn(ExperimentalMaterial3Api::class)
     @Composable
-    fun AlbumView(viewModel: AlbumsViewModel, album: Album) {
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Box(
+    fun AlbumView(album: Album, navController: NavHostController) {
+        Scaffold(topBar = {
+            TopAppBar(
+                title = {
+                    Text(album.nombre)
+                },
+                navigationIcon = {
+                    IconButton(
+                        onClick = {
+                            navController.popBackStack()
+                        }
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, null)
+                    }
+                }
+            )
+        }) {
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth(),
-                contentAlignment = Alignment.Center
+                    .fillMaxSize()
+                    .padding(it),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Image(
-                    painter = painterResource(album.cover),
-                    contentDescription = null,
+                Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .height(360.dp)
-                        .blur(50.dp),
-                    contentScale = ContentScale.FillWidth
-                )
-                Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally){
+                        .fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+
                     Image(
                         painter = painterResource(album.cover),
                         contentDescription = null,
                         modifier = Modifier
-                            .size(200.dp)
-                            .clip(shape = RoundedCornerShape(13.dp))
-                            .border(1.dp, Color.Gray, RoundedCornerShape(13.dp))
+                            .fillMaxWidth()
+                            .height(360.dp)
+                            .blur(50.dp),
+                        contentScale = ContentScale.FillWidth
                     )
-                    Spacer(modifier = Modifier.padding(6.dp))
-                    Text(album.nombre, color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 25.sp)
-                    Spacer(modifier = Modifier.padding(2.dp))
-                    Text(album.artista, color = Color.White, fontSize = 20.sp)
+
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Image(
+                            painter = painterResource(album.cover),
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(200.dp)
+                                .clip(shape = RoundedCornerShape(13.dp))
+                                .border(1.dp, Color.Gray, RoundedCornerShape(13.dp))
+                        )
+                        Spacer(modifier = Modifier.padding(6.dp))
+                        Text(
+                            album.nombre,
+                            color = Color.White,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 25.sp
+                        )
+                        Spacer(modifier = Modifier.padding(2.dp))
+                        Text(album.artista, fontSize = 20.sp, color = Color.White)
+
+                    }
 
                 }
+                Column(
+                    modifier = Modifier
+                        .padding(16.dp)
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    album.canciones.forEach { song ->
 
-            }
-            Column (modifier = Modifier.padding(16.dp).verticalScroll(rememberScrollState())){
-                album.canciones.forEach { song ->
-
-                    Card(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp).height(90.dp)){
-                        Row(modifier = Modifier.fillMaxSize(), horizontalArrangement = Arrangement.Start, verticalAlignment = Alignment.CenterVertically){
-                            Image(painter = painterResource(album.cover), contentDescription = null, modifier = Modifier.padding(end= 8.dp))
-                            Column(){
-                                Text("Hola", fontWeight = FontWeight.ExtraBold)
-                                Text("Mario")
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 8.dp)
+                                .height(90.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = Color.Transparent
+                            )
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxSize(),
+                                horizontalArrangement = Arrangement.Start,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Image(
+                                    painter = painterResource(album.cover),
+                                    contentDescription = null,
+                                    modifier = Modifier.padding(end = 8.dp)
+                                )
+                                Column {
+                                    Text("Hola", fontWeight = FontWeight.ExtraBold)
+                                    Text(song.artista)
+                                }
                             }
                         }
                     }
                 }
-            }
 
+            }
         }
+
     }
 
     @SuppressLint("ResourceType")
