@@ -1,6 +1,7 @@
 package com.mrh.reproductor
 
 import android.annotation.SuppressLint
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -58,6 +59,12 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.media3.common.MediaItem
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.DefaultDataSource
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.MediaSource
+import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -72,18 +79,20 @@ class MainActivity : ComponentActivity() {
         setContent {
             val navController = rememberNavController()
             val viewModel = AlbumsViewModel()
+            val player = ExoPlayer.Builder(this).build()
             viewModel.albums
             ReproductorTheme {
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
                     bottomBar = {
-                        MusicNavBar(navController)
+                        MusicNavBar(navController, player)
                     }
                 ) { innerPadding ->
                     NavigationHost(
                         navController = navController,
                         viewModel = viewModel,
-                        modifier = Modifier.padding(innerPadding)
+                        modifier = Modifier.padding(innerPadding),
+                        player = player
                     )
                 }
             }
@@ -92,7 +101,7 @@ class MainActivity : ComponentActivity() {
 
     @SuppressLint("ResourceType")
     @Composable
-    fun MusicNavBar(navController: NavHostController) {
+    fun MusicNavBar(navController: NavHostController, player: ExoPlayer) {
         var isPlaying by remember { mutableStateOf(false) }
         Card {
             Row(
@@ -122,13 +131,18 @@ class MainActivity : ComponentActivity() {
                 Row {
                     IconButton(
                         onClick = {
-
+                            player.seekToPrevious()
                         }
                     ) {
                         Icon(imageVector = Icons.Outlined.FastRewind, contentDescription = null)
                     }
                     IconButton(
                         onClick = {
+                            if (isPlaying) {
+                                player.pause()
+                            } else {
+                                player.play()
+                            }
                             isPlaying = !isPlaying
                         },
                         colors = IconButtonDefaults.iconButtonColors(
@@ -144,16 +158,16 @@ class MainActivity : ComponentActivity() {
                     }
                     IconButton(
                         onClick = {
-
+                            player.seekToNext()
                         }
                     ) {
                         Icon(imageVector = Icons.Outlined.FastForward, contentDescription = null)
                     }
                 }
             }
-            NavigationBar (
+            NavigationBar(
                 containerColor = Color.Transparent
-            ){
+            ) {
                 val lista = listOf(NavBarValues.INICIO, NavBarValues.PLAYLISTS)
                 lista.forEach { element ->
                     NavigationBarItem(
@@ -176,7 +190,8 @@ class MainActivity : ComponentActivity() {
     fun NavigationHost(
         navController: NavHostController,
         viewModel: AlbumsViewModel,
-        modifier: Modifier = Modifier
+        modifier: Modifier = Modifier,
+        player: ExoPlayer
     ) {
         NavHost(
             startDestination = NavBarValues.INICIO.root,
@@ -197,7 +212,8 @@ class MainActivity : ComponentActivity() {
                     val pos = direccion.arguments?.getString("pos").toString().toInt()
                     AlbumView(
                         album = viewModel.getAlbums()[pos],
-                        navController = navController
+                        navController = navController,
+                        player = player
                     )
                 }
             }
@@ -207,9 +223,11 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    @androidx.annotation.OptIn(UnstableApi::class)
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
-    fun AlbumView(album: Album, navController: NavHostController) {
+    fun AlbumView(album: Album, navController: NavHostController, player: ExoPlayer) {
+        var texto by remember { mutableStateOf("") }
         Scaffold(topBar = {
             TopAppBar(
                 title = {
@@ -279,7 +297,9 @@ class MainActivity : ComponentActivity() {
                         .verticalScroll(rememberScrollState())
                 ) {
                     album.canciones.forEach { song ->
-
+                        val mediaItem =
+                            MediaItem.fromUri(Uri.parse("android.resource://${packageName}/${song.archivo}"))
+                        player.addMediaItem(mediaItem)
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -287,7 +307,11 @@ class MainActivity : ComponentActivity() {
                                 .height(90.dp),
                             colors = CardDefaults.cardColors(
                                 containerColor = Color.Transparent
-                            )
+                            ),
+                            onClick = {
+                                player.prepare()
+                                player.play()
+                            }
                         ) {
                             Row(
                                 modifier = Modifier.fillMaxSize(),
@@ -300,7 +324,7 @@ class MainActivity : ComponentActivity() {
                                     modifier = Modifier.padding(end = 8.dp)
                                 )
                                 Column {
-                                    Text("Hola", fontWeight = FontWeight.ExtraBold)
+                                    Text(player.currentMediaItem?.mediaMetadata?.title.toString(), fontWeight = FontWeight.ExtraBold)
                                     Text(song.artista)
                                 }
                             }

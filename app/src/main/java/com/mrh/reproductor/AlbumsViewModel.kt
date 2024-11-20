@@ -20,14 +20,14 @@ class AlbumsViewModel : ViewModel() {
                 genero = Generos.POP.nombre,
                 canciones = listOf(
                     Song(
-                        nombre = "Cancion",
-                        archivo = 0,
-                        artista = "Mario"
+                        nombre = "Rojo",
+                        archivo = R.raw.rojo,
+                        artista = "J Balvin"
                     ),
                     Song(
-                        nombre = "Cancion",
-                        archivo = 0,
-                        artista = "Mario"
+                        nombre = "8 dias",
+                        archivo = R.raw.ochodias,
+                        artista = "Feid"
                     )
                 )
             )
@@ -41,48 +41,48 @@ class AlbumsViewModel : ViewModel() {
                 canciones = listOf(
                     Song(
                         nombre = "Cancion",
-                        archivo = 0,
+                        archivo = R.raw.rojo,
                         artista = "Mario"
                     ),
                     Song(
                         nombre = "Cancion",
-                        archivo = 0,
+                        archivo = R.raw.rojo,
                         artista = "Mario"
                     )
                     ,
                     Song(
                         nombre = "Cancion",
-                        archivo = 0,
+                        archivo = R.raw.rojo,
                         artista = "Mario"
                     ),
                     Song(
                         nombre = "Cancion",
-                        archivo = 0,
+                        archivo = R.raw.rojo,
                         artista = "Mario"
                     ),
                     Song(
                         nombre = "Cancion",
-                        archivo = 0,
+                        archivo = R.raw.rojo,
                         artista = "Mario"
                     ),
                     Song(
                         nombre = "Cancion",
-                        archivo = 0,
+                        archivo = R.raw.rojo,
                         artista = "Mario"
                     ),
                     Song(
                         nombre = "Cancion",
-                        archivo = 0,
+                        archivo = R.raw.rojo,
                         artista = "Mario"
                     ),
                     Song(
                         nombre = "Cancion",
-                        archivo = 0,
+                        archivo = R.raw.rojo,
                         artista = "Mario"
                     ),
                     Song(
                         nombre = "Cancion",
-                        archivo = 0,
+                        archivo = R.raw.rojo,
                         artista = "Mario"
                     )
                 )
@@ -97,12 +97,12 @@ class AlbumsViewModel : ViewModel() {
                 canciones = listOf(
                     Song(
                         nombre = "Cancion",
-                        archivo = 0,
+                        archivo = R.raw.rojo,
                         artista = "Mario"
                     ),
                     Song(
                         nombre = "Cancion",
-                        archivo = 0,
+                        archivo = R.raw.rojo,
                         artista = "Mario"
                     )
                 )
