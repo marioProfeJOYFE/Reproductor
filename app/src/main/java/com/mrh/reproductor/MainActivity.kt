@@ -60,17 +60,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
 import androidx.media3.common.util.UnstableApi
-import androidx.media3.datasource.DefaultDataSource
-import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.exoplayer.source.MediaSource
-import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
 import androidx.navigation.compose.rememberNavController
 import com.mrh.reproductor.ui.theme.ReproductorTheme
+import java.io.File
+import java.io.FileOutputStream
+import java.io.InputStream
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -79,7 +79,8 @@ class MainActivity : ComponentActivity() {
         setContent {
             val navController = rememberNavController()
             val viewModel = AlbumsViewModel()
-            val player = ExoPlayer.Builder(this).build()
+            val player = ExoPlayerViewModel()
+            player.initializePlayer(this@MainActivity)
             viewModel.albums
             ReproductorTheme {
                 Scaffold(
@@ -101,8 +102,15 @@ class MainActivity : ComponentActivity() {
 
     @SuppressLint("ResourceType")
     @Composable
-    fun MusicNavBar(navController: NavHostController, player: ExoPlayer) {
+    fun MusicNavBar(navController: NavHostController, player: ExoPlayerViewModel) {
         var isPlaying by remember { mutableStateOf(false) }
+        var titulo by remember { mutableStateOf("") }
+        player.setListener(object : ExoPlayerViewModel.ExoPlayerListener {
+            override fun onTrackPlaying(trackUrl: String) {
+                titulo = player.getSongTitle()
+                isPlaying = true
+            }
+        })
         Card {
             Row(
                 modifier = Modifier
@@ -123,8 +131,8 @@ class MainActivity : ComponentActivity() {
                             RoundedCornerShape(10.dp)
                         )
                     )
-                    Column() {
-                        Text("Nombre de la canción", fontWeight = FontWeight.Bold)
+                    Column {
+                        Text(titulo, fontWeight = FontWeight.Bold)
                         Text("Artista")
                     }
                 }
@@ -139,9 +147,9 @@ class MainActivity : ComponentActivity() {
                     IconButton(
                         onClick = {
                             if (isPlaying) {
-                                player.pause()
+                                player.pausePlayer()
                             } else {
-                                player.play()
+                                player.returnPlaying()
                             }
                             isPlaying = !isPlaying
                         },
@@ -191,7 +199,7 @@ class MainActivity : ComponentActivity() {
         navController: NavHostController,
         viewModel: AlbumsViewModel,
         modifier: Modifier = Modifier,
-        player: ExoPlayer
+        player: ExoPlayerViewModel
     ) {
         NavHost(
             startDestination = NavBarValues.INICIO.root,
@@ -226,8 +234,7 @@ class MainActivity : ComponentActivity() {
     @androidx.annotation.OptIn(UnstableApi::class)
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
-    fun AlbumView(album: Album, navController: NavHostController, player: ExoPlayer) {
-        var texto by remember { mutableStateOf("") }
+    fun AlbumView(album: Album, navController: NavHostController, player: ExoPlayerViewModel) {
         Scaffold(topBar = {
             TopAppBar(
                 title = {
@@ -297,9 +304,6 @@ class MainActivity : ComponentActivity() {
                         .verticalScroll(rememberScrollState())
                 ) {
                     album.canciones.forEach { song ->
-                        val mediaItem =
-                            MediaItem.fromUri(Uri.parse("android.resource://${packageName}/${song.archivo}"))
-                        player.addMediaItem(mediaItem)
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -309,8 +313,7 @@ class MainActivity : ComponentActivity() {
                                 containerColor = Color.Transparent
                             ),
                             onClick = {
-                                player.prepare()
-                                player.play()
+                                player.playTrack("android.resource://${packageName}/${song.archivo}")
                             }
                         ) {
                             Row(
@@ -324,7 +327,7 @@ class MainActivity : ComponentActivity() {
                                     modifier = Modifier.padding(end = 8.dp)
                                 )
                                 Column {
-                                    Text(player.currentMediaItem?.mediaMetadata?.title.toString(), fontWeight = FontWeight.ExtraBold)
+                                    Text("Hola", fontWeight = FontWeight.ExtraBold)
                                     Text(song.artista)
                                 }
                             }
@@ -412,6 +415,12 @@ class MainActivity : ComponentActivity() {
                 Text(album.nombre)
             }
 
+        }
+    }
+
+    fun copyInputStreamToFile(inputStream: InputStream, destinationFile: File) {
+        FileOutputStream(destinationFile).use { outputStream ->
+            inputStream.copyTo(outputStream)
         }
     }
 

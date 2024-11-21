@@ -69,4 +69,6 @@ dependencies {
     debugImplementation(libs.androidx.ui.test.manifest)
     implementation(libs.androidx.material.icons.extended.android)
     implementation(libs.androidx.media3.exoplayer)
+    implementation(libs.taglib)
+    implementation(libs.androidx.media3.common)
 }
