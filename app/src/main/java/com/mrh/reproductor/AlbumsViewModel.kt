@@ -1,19 +1,29 @@
 package com.mrh.reproductor
 
-import android.content.res.AssetManager
-import android.util.Log
+import android.content.Context
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
-import com.kyant.taglib.AudioPropertiesReadStyle
-import com.kyant.taglib.TagLib
-import java.io.File
 
-class AlbumsViewModel : ViewModel() {
+class AlbumsViewModel(context: Context) : ViewModel() {
     // Crea una lista de albumes VACIA
     private val _albums = MutableLiveData<List<Album>>()
     // VARIABLE que contiene el dato SIEMPRE ACTUALIZADO
     var albums : LiveData<List<Album>> = _albums
+
+    var context = context
+
+
+
+    private fun crearCancionDesdeArchivo(archivo: Int): Song {
+        val datos = ExoPlayerViewModel().getMP3Metadata(resId=archivo, context = context)
+        return Song(
+            nombre = datos["Title"]!!,
+            archivo = archivo,
+            artista = datos["Artist"]!!
+        )
+    }
 
 
     private fun cargarDatos(){
@@ -25,16 +35,8 @@ class AlbumsViewModel : ViewModel() {
                 cover = R.raw.cover,
                 genero = Generos.POP.nombre,
                 canciones = listOf(
-                    Song(
-                        nombre = "",
-                        archivo = R.raw.antes,
-                        artista = "J Balvin"
-                    ),
-                    Song(
-                        nombre = "8",
-                        archivo = R.raw.tengofe,
-                        artista = "Feid"
-                    )
+                    crearCancionDesdeArchivo(R.raw.antes),
+                    crearCancionDesdeArchivo(R.raw.tengofe)
                 )
             )
         )

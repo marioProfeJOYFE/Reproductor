@@ -78,7 +78,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             val navController = rememberNavController()
-            val viewModel = AlbumsViewModel()
+            val viewModel = AlbumsViewModel(this@MainActivity)
             val player = ExoPlayerViewModel()
             player.initializePlayer(this@MainActivity)
             viewModel.albums
@@ -329,7 +329,7 @@ class MainActivity : ComponentActivity() {
                                     modifier = Modifier.padding(end = 8.dp)
                                 )
                                 Column {
-                                    Text("Hola", fontWeight = FontWeight.ExtraBold)
+                                    Text(song.nombre, fontWeight = FontWeight.ExtraBold)
                                     Text(song.artista)
                                 }
                             }
