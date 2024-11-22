@@ -1,12 +1,19 @@
 package com.mrh.reproductor
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.media.MediaMetadataRetriever
+import androidx.annotation.OptIn
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
+import androidx.media3.common.util.Log
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
+import java.io.ByteArrayOutputStream
 
 class ExoPlayerViewModel : ViewModel() {
 
@@ -24,8 +31,16 @@ class ExoPlayerViewModel : ViewModel() {
         // ... other player configurations ...
     }
 
-    fun playTrack(trackUrl: String) {
-        val mediaMetadata = MediaMetadata.Builder().setTitle("Tengo Fe").setArtist("Feid").build()
+    @OptIn(UnstableApi::class)
+    fun playTrack(archivo: Int, context: Context) {
+        val trackUrl = "android.resource://${context.packageName}/${archivo}"
+        val data = getMP3Metadata(context, archivo)
+        Log.d("ExoPlayerViewModel", "Title: ${data["Title"]}")
+        val mediaMetadata = MediaMetadata.Builder()
+            .setTitle(data["Title"])
+            .setArtist(data["Artist"])
+            .setArtworkData(getAlbumArt(context, archivo)?.toByteArray(), MediaMetadata.PICTURE_TYPE_FRONT_COVER)
+            .build()
         val mediaItem = MediaItem.Builder()
             .setMediaMetadata(mediaMetadata).setUri(trackUrl).build()
         player?.setMediaItem(mediaItem)
@@ -36,44 +51,92 @@ class ExoPlayerViewModel : ViewModel() {
         listener?.onTrackPlaying(trackUrl) // Notify the listener
     }
 
-    fun pausePlayer() {
-        player?.pause()
-        _isPlaying.value = false
+    fun Bitmap.toByteArray(): ByteArray {
+        val stream = ByteArrayOutputStream()
+        this.compress(Bitmap.CompressFormat.PNG, 100, stream)
+        return stream.toByteArray()
     }
 
-    fun returnPlaying() {
-        player?.play()
-        _isPlaying.value = true
+    fun getMP3Metadata(context: Context, resId: Int): Map<String, String> {
+        val retriever = MediaMetadataRetriever()
+        val uri =
+            "android.resource://${context.packageName}/$resId"
+        retriever.setDataSource(context, android.net.Uri.parse(uri))
+        val metadata = mapOf(
+            "Title" to (retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)
+                ?: "Unknown"),
+            "Artist" to (retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST)
+                ?: "Unknown"),
+            "Album" to (retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM)
+                ?: "Unknown"),
+            "Duration" to (retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
+                ?: "Unknown")
+        )
+        retriever.release()
+        return metadata
     }
 
-    fun seekToNext() {
-        player?.seekToNext()
+    fun getAlbumArt(context: Context, resId: Int): Bitmap? {
+        val retriever = MediaMetadataRetriever()
+        val uri =
+            "android.resource://${context.packageName}/$resId"
+        retriever.setDataSource (context, android.net.Uri.parse(uri))
+        val art = retriever.embeddedPicture
+        retriever.release()
+        return if (art != null) {
+            BitmapFactory.decodeByteArray(
+                art,
+                0,
+                art.size
+            )
+        } else {
+            null
+        }
     }
 
-    fun seekToPrevious() {
-        player?.seekToPrevious()
-    }
 
-    fun setListener(listener: ExoPlayerListener) {
-        this.listener = listener
-    }
+        fun pausePlayer() {
+            player?.pause()
+            _isPlaying.value = false
+        }
 
-    fun getCurrentTrack(): String? {
-        return _currentTrack.value
-    }
+        fun returnPlaying() {
+            player?.play()
+            _isPlaying.value = true
+        }
 
-    fun getSongTitle():String{
-        return player?.mediaMetadata?.title.toString()
+        fun seekToNext() {
+            player?.seekToNext()
+        }
 
-    }
+        fun seekToPrevious() {
+            player?.seekToPrevious()
+        }
 
-    override fun onCleared() {
-        super.onCleared()
-        player?.release()
-        player = null
-    }
+        fun setListener(listener: ExoPlayerListener) {
+            this.listener = listener
+        }
 
-    interface ExoPlayerListener {
-        fun onTrackPlaying(trackUrl: String)
+        fun getCurrentTrack(): String? {
+            return currentTrack.value
+        }
+
+        fun getSongTitle(): String {
+            return player?.mediaMetadata?.title.toString()
+
+        }
+
+        override fun onCleared() {
+            super.onCleared()
+            player?.release()
+            player = null
+        }
+
+        fun getArtists(): String {
+            return player?.mediaMetadata?.artist.toString()
+        }
+
+        interface ExoPlayerListener {
+            fun onTrackPlaying(trackUrl: String)
+        }
     }
-}

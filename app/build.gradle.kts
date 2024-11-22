@@ -71,4 +71,5 @@ dependencies {
     implementation(libs.androidx.media3.exoplayer)
     implementation(libs.taglib)
     implementation(libs.androidx.media3.common)
+    implementation(libs.androidx.media)
 }

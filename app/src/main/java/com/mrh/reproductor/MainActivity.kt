@@ -105,9 +105,11 @@ class MainActivity : ComponentActivity() {
     fun MusicNavBar(navController: NavHostController, player: ExoPlayerViewModel) {
         var isPlaying by remember { mutableStateOf(false) }
         var titulo by remember { mutableStateOf("") }
+        var artist by remember { mutableStateOf("") }
         player.setListener(object : ExoPlayerViewModel.ExoPlayerListener {
             override fun onTrackPlaying(trackUrl: String) {
                 titulo = player.getSongTitle()
+                artist = player.getArtists()
                 isPlaying = true
             }
         })
@@ -313,7 +315,7 @@ class MainActivity : ComponentActivity() {
                                 containerColor = Color.Transparent
                             ),
                             onClick = {
-                                player.playTrack("android.resource://${packageName}/${song.archivo}")
+                                player.playTrack(song.archivo, context = this@MainActivity)
                             }
                         ) {
                             Row(
@@ -418,11 +420,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    fun copyInputStreamToFile(inputStream: InputStream, destinationFile: File) {
-        FileOutputStream(destinationFile).use { outputStream ->
-            inputStream.copyTo(outputStream)
-        }
-    }
 
 }
 
