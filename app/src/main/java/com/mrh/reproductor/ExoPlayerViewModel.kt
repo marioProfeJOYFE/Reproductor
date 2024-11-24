@@ -31,6 +31,12 @@ class ExoPlayerViewModel : ViewModel() {
         // ... other player configurations ...
     }
 
+    fun addToPlaylist(archivo: Int, context: Context) {
+        val trackUrl = "android.resource://${context.packageName}/${archivo}"
+        val mediaItem = MediaItem.fromUri(trackUrl)
+        player?.addMediaItem(mediaItem)
+    }
+
     @OptIn(UnstableApi::class)
     fun playTrack(archivo: Int, context: Context) {
         val trackUrl = "android.resource://${context.packageName}/${archivo}"
@@ -49,6 +55,13 @@ class ExoPlayerViewModel : ViewModel() {
         _isPlaying.value = true
         _currentTrack.value = trackUrl
         listener?.onTrackPlaying(trackUrl) // Notify the listener
+    }
+
+    fun playAlbum(album: Album, context: Context) {
+        album.canciones.forEach { song ->
+            addToPlaylist(song.archivo, context)
+        }
+        playTrack(album.canciones[0].archivo, context)
     }
 
     fun Bitmap.toByteArray(): ByteArray {
@@ -134,6 +147,12 @@ class ExoPlayerViewModel : ViewModel() {
 
         fun getArtists(): String {
             return player?.mediaMetadata?.artist.toString()
+        }
+
+        fun getCover(): Bitmap? {
+            return player?.mediaMetadata?.artworkData?.let {
+                BitmapFactory.decodeByteArray(it, 0, it.size)
+            }
         }
 
         interface ExoPlayerListener {

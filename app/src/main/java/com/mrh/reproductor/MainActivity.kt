@@ -1,7 +1,7 @@
 package com.mrh.reproductor
 
 import android.annotation.SuppressLint
-import android.net.Uri
+import android.graphics.Bitmap
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -54,13 +54,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.media3.common.MediaItem
-import androidx.media3.common.MediaMetadata
 import androidx.media3.common.util.UnstableApi
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -68,9 +68,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
 import androidx.navigation.compose.rememberNavController
 import com.mrh.reproductor.ui.theme.ReproductorTheme
-import java.io.File
-import java.io.FileOutputStream
-import java.io.InputStream
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -106,11 +103,13 @@ class MainActivity : ComponentActivity() {
         var isPlaying by remember { mutableStateOf(false) }
         var titulo by remember { mutableStateOf("") }
         var artist by remember { mutableStateOf("") }
+        var caratula by remember { mutableStateOf<Bitmap?>(null) }
         player.setListener(object : ExoPlayerViewModel.ExoPlayerListener {
             override fun onTrackPlaying(trackUrl: String) {
                 titulo = player.getSongTitle()
                 artist = player.getArtists()
                 isPlaying = true
+                caratula = player.getCover()
             }
         })
         Card {
@@ -126,16 +125,18 @@ class MainActivity : ComponentActivity() {
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Image(
-                        painter = painterResource(R.raw.cover),
-                        contentDescription = null,
-                        modifier = Modifier.clip(
-                            RoundedCornerShape(10.dp)
+                    caratula?.asImageBitmap()?.let {
+                        Image(
+                            bitmap = it,
+                            contentDescription = null,
+                            modifier = Modifier.clip(
+                                RoundedCornerShape(10.dp)
+                            )
                         )
-                    )
+                    }
                     Column {
                         Text(titulo, fontWeight = FontWeight.Bold)
-                        Text("Artista")
+                        Text(artist)
                     }
                 }
                 Row {
@@ -215,7 +216,8 @@ class MainActivity : ComponentActivity() {
                 composable(route = NavBarValues.INICIO.route) {
                     AlbumsView(
                         viewModel = viewModel,
-                        navController = navController
+                        navController = navController,
+                        player = player
                     )
                 }
                 composable(route = NavBarValues.ALBUM_VIEW.route) { direccion ->
@@ -237,7 +239,11 @@ class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     fun AlbumView(album: Album, navController: NavHostController, player: ExoPlayerViewModel) {
-        Scaffold(topBar = {
+        Column(
+            modifier = Modifier
+                .fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
             TopAppBar(
                 title = {
                     Text(album.nombre)
@@ -252,19 +258,12 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             )
-        }) {
-            Column(
+            Box(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(it),
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .fillMaxWidth(),
+                contentAlignment = Alignment.Center
             ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth(),
-                    contentAlignment = Alignment.Center
-                ) {
-
+                if (album.cover != 0) {
                     Image(
                         painter = painterResource(album.cover),
                         contentDescription = null,
@@ -274,11 +273,24 @@ class MainActivity : ComponentActivity() {
                             .blur(50.dp),
                         contentScale = ContentScale.FillWidth
                     )
-
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
+                } else {
+                    player.getAlbumArt(this@MainActivity, album.canciones[0].archivo)
+                        ?.let { it1 ->
+                            Image(
+                                bitmap = it1.asImageBitmap(),
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(360.dp)
+                                    .blur(50.dp),
+                            )
+                        }
+                }
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    if (album.cover != 0) {
                         Image(
                             painter = painterResource(album.cover),
                             contentDescription = null,
@@ -287,65 +299,103 @@ class MainActivity : ComponentActivity() {
                                 .clip(shape = RoundedCornerShape(13.dp))
                                 .border(1.dp, Color.Gray, RoundedCornerShape(13.dp))
                         )
-                        Spacer(modifier = Modifier.padding(6.dp))
-                        Text(
-                            album.nombre,
-                            color = Color.White,
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 25.sp
-                        )
-                        Spacer(modifier = Modifier.padding(2.dp))
-                        Text(album.artista, fontSize = 20.sp, color = Color.White)
-
-                    }
-
-                }
-                Column(
-                    modifier = Modifier
-                        .padding(16.dp)
-                        .verticalScroll(rememberScrollState())
-                ) {
-                    album.canciones.forEach { song ->
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(bottom = 8.dp)
-                                .height(90.dp),
-                            colors = CardDefaults.cardColors(
-                                containerColor = Color.Transparent
-                            ),
-                            onClick = {
-                                player.playTrack(song.archivo, context = this@MainActivity)
+                    } else {
+                        player.getAlbumArt(this@MainActivity, album.canciones[0].archivo)
+                            ?.let { it1 ->
+                                Image(
+                                    bitmap = it1.asImageBitmap(),
+                                    contentDescription = null,
+                                    modifier = Modifier
+                                        .size(200.dp)
+                                        .clip(shape = RoundedCornerShape(13.dp))
+                                        .border(1.dp, Color.Gray, RoundedCornerShape(13.dp))
+                                )
                             }
+                    }
+                    Spacer(modifier = Modifier.padding(6.dp))
+                    Text(
+                        album.nombre,
+                        color = Color.White,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 25.sp
+                    )
+                    Spacer(modifier = Modifier.padding(2.dp))
+                    Text(album.artista, fontSize = 20.sp, color = Color.White)
+                    IconButton(
+                        onClick = {
+                            player.playAlbum(album, this@MainActivity)
+                        },
+                        colors = IconButtonDefaults.iconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.tertiary,
+                            contentColor = MaterialTheme.colorScheme.onTertiary
+                        )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.PlayArrow,
+                            contentDescription = null,
+                        )
+                    }
+                }
+
+            }
+            Column(
+                modifier = Modifier
+                    .padding(start = 16.dp, end = 16.dp, top = 16.dp)
+                    .verticalScroll(rememberScrollState())
+            ) {
+                album.canciones.forEach { song ->
+                    player.addToPlaylist(song.archivo, context = this@MainActivity)
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 8.dp)
+                            .height(90.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color.Transparent
+                        ),
+                        onClick = {
+                            player.playTrack(song.archivo, context = this@MainActivity)
+                        }
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxSize(),
+                            horizontalArrangement = Arrangement.Start,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Row(
-                                modifier = Modifier.fillMaxSize(),
-                                horizontalArrangement = Arrangement.Start,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
+                            if (album.cover != 0) {
                                 Image(
                                     painter = painterResource(album.cover),
                                     contentDescription = null,
                                     modifier = Modifier.padding(end = 8.dp)
                                 )
-                                Column {
-                                    Text(song.nombre, fontWeight = FontWeight.ExtraBold)
-                                    Text(song.artista)
-                                }
+                            } else {
+                                player.getAlbumArt(this@MainActivity, song.archivo)
+                                    ?.let { it1 ->
+                                        Image(
+                                            bitmap = it1.asImageBitmap(),
+                                            contentDescription = null,
+                                            modifier = Modifier.padding(end = 8.dp)
+                                        )
+                                    }
+                            }
+                            Column {
+                                Text(song.nombre, fontWeight = FontWeight.ExtraBold)
+                                Text(song.artista)
                             }
                         }
                     }
                 }
-
             }
+
         }
 
     }
 
     @SuppressLint("ResourceType")
     @Composable
-    fun AlbumsView(viewModel: AlbumsViewModel, navController: NavHostController) {
-        val generos: List<String> = Generos.entries.toTypedArray().map { genero -> genero.nombre }
+    fun AlbumsView(viewModel: AlbumsViewModel, navController: NavHostController, player: ExoPlayerViewModel) {
+        val generos: List<String> =
+            Generos.entries.toTypedArray().map { genero -> genero.nombre }
         val albums = viewModel.getAlbums()
         var selectedFilter by remember { mutableStateOf(setOf<String>()) }
 
@@ -384,7 +434,8 @@ class MainActivity : ComponentActivity() {
                     AlbumCard(
                         album = album,
                         navController = navController,
-                        pos = albums.indexOf(album)
+                        pos = albums.indexOf(album),
+                        player = player
                     )
                 }
             }
@@ -395,32 +446,50 @@ class MainActivity : ComponentActivity() {
 
     @SuppressLint("ResourceType")
     @Composable
-    fun AlbumCard(album: Album, navController: NavHostController, pos: Int) {
+    fun AlbumCard(
+        album: Album,
+        navController: NavHostController,
+        pos: Int,
+        player: ExoPlayerViewModel
+    ) {
         Card(
             colors = CardDefaults.cardColors(
                 containerColor = Color.Transparent
             ),
             onClick = {
                 navController.navigate("album_view/$pos")
-            }
+            },
         ) {
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.Start
             ) {
-                Image(
-                    painter = painterResource(R.raw.cover),
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize()
-                )
-                Text(album.nombre)
+                if (album.cover != 0) {
+                    Image(
+                        painter = painterResource(album.cover),
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(13.dp))
+                    )
+                } else {
+                    player.getAlbumArt(this@MainActivity, album.canciones[0].archivo)
+                        ?.let { it1 ->
+                            Image(
+                                bitmap = it1.asImageBitmap(),
+                                contentDescription = null,
+                                modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(13.dp))
+                            )
+                        }
+                }
+                Text(album.nombre, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis,)
+                Text(album.artista)
             }
 
+
         }
+
+
     }
-
-
 }
 
 
