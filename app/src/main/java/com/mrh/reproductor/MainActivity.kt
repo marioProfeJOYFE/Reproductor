@@ -45,6 +45,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -239,25 +240,18 @@ class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     fun AlbumView(album: Album, navController: NavHostController, player: ExoPlayerViewModel) {
+
+        LaunchedEffect(Unit) {
+            album.canciones.forEach { song ->
+                player.playAlbum(album, this@MainActivity)
+            }
+        }
+
         Column(
             modifier = Modifier
                 .fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            TopAppBar(
-                title = {
-                    Text(album.nombre)
-                },
-                navigationIcon = {
-                    IconButton(
-                        onClick = {
-                            navController.popBackStack()
-                        }
-                    ) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, null)
-                    }
-                }
-            )
             Box(
                 modifier = Modifier
                     .fillMaxWidth(),
@@ -323,7 +317,7 @@ class MainActivity : ComponentActivity() {
                     Text(album.artista, fontSize = 20.sp, color = Color.White)
                     IconButton(
                         onClick = {
-                            player.playAlbum(album, this@MainActivity)
+                            player.returnPlaying()
                         },
                         colors = IconButtonDefaults.iconButtonColors(
                             containerColor = MaterialTheme.colorScheme.tertiary,
@@ -344,7 +338,6 @@ class MainActivity : ComponentActivity() {
                     .verticalScroll(rememberScrollState())
             ) {
                 album.canciones.forEach { song ->
-                    player.addToPlaylist(song.archivo, context = this@MainActivity)
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()

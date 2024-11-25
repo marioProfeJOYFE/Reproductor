@@ -8,11 +8,13 @@ import androidx.annotation.OptIn
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.util.Log
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
+import kotlinx.coroutines.launch
 import java.io.ByteArrayOutputStream
 
 class ExoPlayerViewModel : ViewModel() {
@@ -31,9 +33,25 @@ class ExoPlayerViewModel : ViewModel() {
         // ... other player configurations ...
     }
 
+    fun playAlbum(album: Album, context: Context) {
+        viewModelScope.launch {
+            album.canciones.forEach { song ->
+                addToPlaylist(song.archivo, context)
+            }
+            player?.prepare()
+        }
+    }
+
     fun addToPlaylist(archivo: Int, context: Context) {
         val trackUrl = "android.resource://${context.packageName}/${archivo}"
-        val mediaItem = MediaItem.fromUri(trackUrl)
+        val data = getMP3Metadata(context, archivo)
+        val mediaMetadata = MediaMetadata.Builder()
+            .setTitle(data["Title"])
+            .setArtist(data["Artist"])
+            .setArtworkData(getAlbumArt(context, archivo)?.toByteArray(), MediaMetadata.PICTURE_TYPE_FRONT_COVER)
+            .build()
+        val mediaItem = MediaItem.Builder()
+            .setMediaMetadata(mediaMetadata).setUri(trackUrl).build()
         player?.addMediaItem(mediaItem)
     }
 
@@ -57,12 +75,6 @@ class ExoPlayerViewModel : ViewModel() {
         listener?.onTrackPlaying(trackUrl) // Notify the listener
     }
 
-    fun playAlbum(album: Album, context: Context) {
-        album.canciones.forEach { song ->
-            addToPlaylist(song.archivo, context)
-        }
-        playTrack(album.canciones[0].archivo, context)
-    }
 
     fun Bitmap.toByteArray(): ByteArray {
         val stream = ByteArrayOutputStream()
