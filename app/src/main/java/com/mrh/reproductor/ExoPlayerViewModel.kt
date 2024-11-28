@@ -25,7 +25,7 @@ class ExoPlayerViewModel : ViewModel() {
     private val _currentTrack = MutableLiveData<String?>(null)
     val currentTrack: LiveData<String?> = _currentTrack
 
-    private var player: ExoPlayer? = null
+    var player: ExoPlayer? = null
     private var listener: ExoPlayerListener? = null
 
     fun initializePlayer(context: Context) {
@@ -34,11 +34,16 @@ class ExoPlayerViewModel : ViewModel() {
     }
 
     fun playAlbum(album: Album, context: Context) {
+        player?.release()
         viewModelScope.launch {
             album.canciones.forEach { song ->
                 addToPlaylist(song.archivo, context)
             }
             player?.prepare()
+            player?.play()
+            _isPlaying.value = true
+            _currentTrack.value = "android.resource://${context.packageName}/${album.canciones[0].archivo}"
+            listener?.onTrackPlaying("android.resource://${context.packageName}/${album.canciones[0].archivo}")
         }
     }
 

@@ -26,7 +26,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.FastForward
 import androidx.compose.material.icons.outlined.FastRewind
 import androidx.compose.material.icons.outlined.Pause
@@ -39,14 +38,17 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -60,8 +62,10 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -69,6 +73,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
 import androidx.navigation.compose.rememberNavController
 import com.mrh.reproductor.ui.theme.ReproductorTheme
+import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -98,6 +103,47 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    @androidx.annotation.OptIn(UnstableApi::class)
+    @Composable
+    fun PlaybackSlider(exoPlayer: ExoPlayerViewModel) {
+        var playbackPosition by remember { mutableStateOf(0L) }
+        var duration by remember { mutableLongStateOf(0L) }
+        var isUserInteracting by remember { mutableStateOf(false) }
+
+        LaunchedEffect(exoPlayer) {
+            exoPlayer.player?.addListener(object : Player.Listener {
+                @Deprecated("Deprecated in Java")
+                override fun onPositionDiscontinuity(reason: Int) {
+                    playbackPosition = exoPlayer.player?.currentPosition!!
+                }
+
+                override fun onPlaybackStateChanged(playbackState: Int) {
+                    if (playbackState == Player.STATE_READY) {
+                        duration = exoPlayer.player?.duration!!
+                    }
+                }
+            })
+        }
+
+        LaunchedEffect(key1 = exoPlayer.player?.isPlaying) {
+            while (exoPlayer.player!!.isPlaying) {
+                playbackPosition = exoPlayer.player!!.currentPosition
+                delay(100) // Update every 100 milliseconds
+            }
+        }
+
+        Slider(
+            value = playbackPosition.toFloat(),
+            onValueChange = { newPosition ->
+                playbackPosition = newPosition.toLong()
+                exoPlayer.player?.seekTo(playbackPosition)
+            },
+            valueRange = 0f..exoPlayer.player?.duration?.toFloat()!!,
+            modifier = Modifier.fillMaxWidth().padding(12.dp)
+        )
+    }
+
+    @OptIn(ExperimentalMaterial3Api::class)
     @SuppressLint("ResourceType")
     @Composable
     fun MusicNavBar(navController: NavHostController, player: ExoPlayerViewModel) {
@@ -105,6 +151,7 @@ class MainActivity : ComponentActivity() {
         var titulo by remember { mutableStateOf("") }
         var artist by remember { mutableStateOf("") }
         var caratula by remember { mutableStateOf<Bitmap?>(null) }
+        var modalVisible by remember { mutableStateOf(false) }
         player.setListener(object : ExoPlayerViewModel.ExoPlayerListener {
             override fun onTrackPlaying(trackUrl: String) {
                 titulo = player.getSongTitle()
@@ -113,7 +160,83 @@ class MainActivity : ComponentActivity() {
                 caratula = player.getCover()
             }
         })
-        Card {
+        Card(
+            onClick = {
+                modalVisible = !modalVisible
+            }
+        ) {
+            if (modalVisible) {
+                ModalBottomSheet(
+                    onDismissRequest = {
+                        modalVisible = false
+                    },
+                    sheetMaxWidth = Dp.Unspecified,
+                    sheetState = rememberModalBottomSheetState(
+                        skipPartiallyExpanded = true
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        caratula?.asImageBitmap()?.let {
+                            Image(
+                                bitmap = it,
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .clip(
+                                        RoundedCornerShape(10.dp)
+                                    )
+                                    .size(280.dp)
+                            )
+                        }
+                        Column (
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ){
+                            Text(titulo, fontWeight = FontWeight.Bold, fontSize = 25.sp)
+                            Text(artist)
+                        }
+                        PlaybackSlider(exoPlayer = player)
+                        Row {
+                            IconButton(
+                                onClick = {
+                                    player.seekToPrevious()
+                                }
+                            ) {
+                                Icon(imageVector = Icons.Outlined.FastRewind, contentDescription = null)
+                            }
+                            IconButton(
+                                onClick = {
+                                    if (isPlaying) {
+                                        player.pausePlayer()
+                                    } else {
+                                        player.returnPlaying()
+                                    }
+                                    isPlaying = !isPlaying
+                                },
+                                colors = IconButtonDefaults.iconButtonColors(
+                                    containerColor = MaterialTheme.colorScheme.secondary,
+                                    contentColor = MaterialTheme.colorScheme.onSecondary
+                                )
+                            ) {
+                                if (isPlaying) {
+                                    Icon(imageVector = Icons.Outlined.Pause, contentDescription = null)
+                                } else {
+                                    Icon(imageVector = Icons.Outlined.PlayArrow, contentDescription = null)
+                                }
+                            }
+                            IconButton(
+                                onClick = {
+                                    player.seekToNext()
+                                }
+                            ) {
+                                Icon(imageVector = Icons.Outlined.FastForward, contentDescription = null)
+                            }
+                        }
+                    }
+                }
+            }
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -240,12 +363,6 @@ class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     fun AlbumView(album: Album, navController: NavHostController, player: ExoPlayerViewModel) {
-
-        LaunchedEffect(Unit) {
-            album.canciones.forEach { song ->
-                player.playAlbum(album, this@MainActivity)
-            }
-        }
 
         Column(
             modifier = Modifier
@@ -386,7 +503,11 @@ class MainActivity : ComponentActivity() {
 
     @SuppressLint("ResourceType")
     @Composable
-    fun AlbumsView(viewModel: AlbumsViewModel, navController: NavHostController, player: ExoPlayerViewModel) {
+    fun AlbumsView(
+        viewModel: AlbumsViewModel,
+        navController: NavHostController,
+        player: ExoPlayerViewModel
+    ) {
         val generos: List<String> =
             Generos.entries.toTypedArray().map { genero -> genero.nombre }
         val albums = viewModel.getAlbums()
@@ -462,7 +583,9 @@ class MainActivity : ComponentActivity() {
                     Image(
                         painter = painterResource(album.cover),
                         contentDescription = null,
-                        modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(13.dp))
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(RoundedCornerShape(13.dp))
                     )
                 } else {
                     player.getAlbumArt(this@MainActivity, album.canciones[0].archivo)
@@ -470,11 +593,18 @@ class MainActivity : ComponentActivity() {
                             Image(
                                 bitmap = it1.asImageBitmap(),
                                 contentDescription = null,
-                                modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(13.dp))
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(RoundedCornerShape(13.dp))
                             )
                         }
                 }
-                Text(album.nombre, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis,)
+                Text(
+                    album.nombre,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
                 Text(album.artista)
             }
 
