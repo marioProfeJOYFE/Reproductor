@@ -65,6 +65,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.navigation.NavHostController
@@ -109,6 +110,12 @@ class MainActivity : ComponentActivity() {
         var playbackPosition by remember { mutableStateOf(0L) }
         var duration by remember { mutableLongStateOf(0L) }
         var isUserInteracting by remember { mutableStateOf(false) }
+        exoPlayer.setListener(object : ExoPlayerViewModel.ExoPlayerListener {
+            override fun onTrackPlaying(trackUrl: String) {
+                duration = exoPlayer.player?.duration!!
+                playbackPosition = exoPlayer.player?.currentPosition!!
+            }
+        })
 
         LaunchedEffect(exoPlayer) {
             exoPlayer.player?.addListener(object : Player.Listener {
@@ -119,7 +126,7 @@ class MainActivity : ComponentActivity() {
 
                 override fun onPlaybackStateChanged(playbackState: Int) {
                     if (playbackState == Player.STATE_READY) {
-                        duration = exoPlayer.player?.duration!!
+                        duration = verifyNullDuration(exoPlayer.player?.duration).toLong()
                     }
                 }
             })
@@ -132,15 +139,26 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        Slider(
-            value = playbackPosition.toFloat(),
-            onValueChange = { newPosition ->
-                playbackPosition = newPosition.toLong()
-                exoPlayer.player?.seekTo(playbackPosition)
-            },
-            valueRange = 0f..exoPlayer.player?.duration?.toFloat()!!,
-            modifier = Modifier.fillMaxWidth().padding(12.dp)
-        )
+        if(!exoPlayer.player?.duration!!.equals(null)){
+            Slider(
+                value = playbackPosition.toFloat(),
+                onValueChange = { newPosition ->
+                    playbackPosition = newPosition.coerceAtLeast(0f).toLong()
+                    exoPlayer.player?.seekTo(playbackPosition)
+                },
+                valueRange = 0f..verifyNullDuration(exoPlayer.player?.duration),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(12.dp)
+            )
+        }
+    }
+
+    fun verifyNullDuration(duration: Long?): Float {
+        if (duration != null) {
+            return duration.toFloat()
+        }
+        return 1f
     }
 
     @OptIn(ExperimentalMaterial3Api::class)
@@ -455,6 +473,10 @@ class MainActivity : ComponentActivity() {
                     .verticalScroll(rememberScrollState())
             ) {
                 album.canciones.forEach { song ->
+                    LaunchedEffect(player) {
+                        player.addToPlaylist(song.archivo, this@MainActivity)
+                        player.player?.prepare()
+                    }
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -464,7 +486,7 @@ class MainActivity : ComponentActivity() {
                             containerColor = Color.Transparent
                         ),
                         onClick = {
-                            player.playTrack(song.archivo, context = this@MainActivity)
+                            player.playFromPlaylist(album.canciones.indexOf(song))
                         }
                     ) {
                         Row(

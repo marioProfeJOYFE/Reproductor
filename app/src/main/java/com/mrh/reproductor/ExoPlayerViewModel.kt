@@ -47,6 +47,13 @@ class ExoPlayerViewModel : ViewModel() {
         }
     }
 
+    fun playFromPlaylist(index: Int) {
+        player?.seekTo(index, 0)
+        player?.play()
+        _isPlaying.value = true
+        listener?.onTrackPlaying(player?.currentMediaItem?.mediaId.toString())
+    }
+
     fun addToPlaylist(archivo: Int, context: Context) {
         val trackUrl = "android.resource://${context.packageName}/${archivo}"
         val data = getMP3Metadata(context, archivo)
@@ -137,10 +144,12 @@ class ExoPlayerViewModel : ViewModel() {
 
         fun seekToNext() {
             player?.seekToNext()
+            listener?.onTrackPlaying(player?.currentMediaItem?.mediaId.toString())
         }
 
         fun seekToPrevious() {
             player?.seekToPrevious()
+            listener?.onTrackPlaying(player?.currentMediaItem?.mediaId.toString())
         }
 
         fun setListener(listener: ExoPlayerListener) {
